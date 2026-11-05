@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Ultimate: Endless Progression</title>
+    <!-- Tailwind CSS for modern UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for gorgeous icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            overflow: hidden;
+        }
+        .text-shadow {
+            text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 4px 10px rgba(0,0,0,0.5);
+        }
+        .box-glow {
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .floating {
+            animation: float 2s ease-in-out infinite;
+        }
+        /* Custom scrollbar for shop/quests modal */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white h-screen w-screen flex flex-col justify-between items-center select-none relative">
+
+    <!-- TOP HEADER / STATS BAR -->
+    <div id="header-bar" class="w-full max-w-md bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-2 flex justify-between items-center z-30 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/40 px-2.5 py-1 rounded-full text-amber-400 font-bold text-xs">
+                <i class="fa-solid fa-coins text-amber-400"></i>
+                <span id="ui-coins">0</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-blue-500/20 border border-blue-500/40 px-2.5 py-1 rounded-full text-blue-400 font-bold text-xs">
+                <i class="fa-solid fa-gem text-blue-400"></i>
+                <span id="ui-gems">0</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="openModal('shop-modal')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 px-3 py-1 rounded-xl text-xs font-bold shadow transition transform active:scale-95 flex items-center gap-1">
+                <i class="fa-solid fa-store"></i> Shop
+            </button>
+            <button onclick="openModal('quests-modal')" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-3 py-1 rounded-xl text-xs font-bold shadow transition transform active:scale-95 flex items-center gap-1 relative">
+                <i class="fa-solid fa-scroll"></i> Quests
+                <span id="quest-badge" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-extrabold hidden">!</span>
+            </button>
+            <button onclick="openModal('achievements-modal')" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-3 py-1 rounded-xl text-xs font-bold shadow transition transform active:scale-95 flex items-center gap-1">
+                <i class="fa-solid fa-trophy"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN GAME CONTAINER -->
+    <div class="relative w-full max-w-md flex-1 flex flex-col items-center justify-center overflow-hidden bg-sky-400 shadow-2xl" id="game-container">
+        
+        <!-- CANVAS -->
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full cursor-pointer block"></canvas>
+
+        <!-- IN-GAME HUD -->
+        <div id="in-game-hud" class="absolute top-4 inset-x-0 flex justify-between px-6 pointer-events-none z-10 hidden">
+            <div class="text-center">
+                <div class="text-[10px] uppercase font-bold text-slate-200 tracking-wider">Score</div>
+                <div id="hud-score" class="text-4xl font-black text-white text-shadow">0</div>
+            </div>
+            <div class="flex flex-col items-end">
+                <div class="text-[10px] uppercase font-bold text-slate-200 tracking-wider">Power-Up</div>
+                <div id="hud-powerup" class="text-xs font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded-full mt-1 hidden">Shield Active</div>
+            </div>
+        </div>
+
+        <!-- MAIN MENU OVERLAY -->
+        <div id="menu-screen" class="absolute inset-0 bg-gradient-to-b from-sky-900/90 via-slate-900/95 to-slate-950 flex flex-col items-center justify-between p-6 z-20">
+            <div class="text-center mt-6 floating">
+                <div class="inline-block bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-widest mb-2">Ultimate Edition</div>
+                <h1 class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-500 text-shadow tracking-tight">FLAPPY BIRD</h1>
+                <p class="text-slate-400 text-xs mt-1">Endless Upgrades, Quests & Custom Birds</p>
+            </div>
+
+            <!-- BIRD PREVIEW CONTAINER -->
+            <div class="flex flex-col items-center my-2">
+                <div class="relative w-20 h-20 bg-slate-800/80 rounded-2xl border border-slate-700 flex items-center justify-center shadow-xl mb-2">
+                    <canvas id="previewCanvas" width="60" height="60" class="w-14 h-14"></canvas>
+                    <div id="menu-bird-name" class="absolute -bottom-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow">Classic Bird</div>
+                </div>
+                <button onclick="openModal('shop-modal')" class="text-xs text-sky-400 hover:underline mt-1 font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-palette"></i> Change Skin
+                </button>
+            </div>
+
+            <!-- GAME MODE SELECTOR -->
+            <div class="w-full space-y-2 mb-2">
+                <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block text-center">Select Game Mode</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setGameMode('classic')" id="mode-classic" class="py-2.5 px-3 rounded-xl border border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow">
+                        <i class="fa-solid fa-feather"></i> Classic
+                    </button>
+                    <button onclick="setGameMode('rush')" id="mode-rush" class="py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-400 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow">
+                        <i class="fa-solid fa-bolt"></i> Speed Rush
+                    </button>
+                </div>
+            </div>
+
+            <!-- START BUTTON -->
+            <div class="w-full space-y-3 mb-4">
+                <button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-black text-xl rounded-2xl shadow-lg border-b-4 border-green-800 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> TAP TO PLAY
+                </button>
+                <div class="flex justify-between text-xs text-slate-400 px-2 font-semibold">
+                    <span>High Score: <strong id="menu-high-score" class="text-white">0</strong></span>
+                    <span>Total Coins: <strong id="menu-total-coins" class="text-amber-400">0</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME OVER OVERLAY -->
+        <div id="gameover-screen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20 hidden">
+            <div class="text-center mb-6">
+                <div class="text-red-500 font-black text-4xl text-shadow mb-1 animate-bounce">GAME OVER</div>
+                <p class="text-slate-400 text-xs">Better luck next time, flyer!</p>
+            </div>
+
+            <!-- SCORE CARD -->
+            <div class="w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl mb-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-amber-500/10 w-32 h-32 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="grid grid-cols-2 gap-4 text-center mb-4">
+                    <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/50">
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Score</div>
+                        <div id="go-score" class="text-3xl font-black text-white">0</div>
+                    </div>
+                    <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/50">
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Best Score</div>
+                        <div id="go-best" class="text-3xl font-black text-amber-400">0</div>
+                    </div>
+                </div>
+                <div class="flex justify-around items-center bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-coins text-amber-400 text-lg"></i>
+                        <span class="text-xs font-bold text-slate-300">+<span id="go-earned-coins">0</span> Coins</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-gem text-blue-400 text-lg"></i>
+                        <span class="text-xs font-bold text-slate-300">+<span id="go-earned-gems">0</span> Gems</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="w-full space-y-3">
+                <button onclick="startGame()" class="w-full py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-black text-lg rounded-2xl shadow-lg border-b-4 border-blue-800 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> PLAY AGAIN
+                </button>
+                <button onclick="returnToMenu()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm rounded-2xl border border-slate-700 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-house"></i> Main Menu
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM NAVBAR CONTROLS -->
+    <div id="bottom-bar" class="w-full max-w-md bg-slate-900/80 backdrop-blur-md border-t border-slate-800 px-4 py-3 flex justify-around items-center z-30 shadow-lg text-xs font-bold text-slate-400">
+        <button onclick="openModal('upgrades-modal')" class="flex flex-col items-center gap-1 hover:text-sky-400 transition">
+            <i class="fa-solid fa-angles-up text-lg text-sky-400"></i> Upgrades
+        </button>
+        <button onclick="openModal('shop-modal')" class="flex flex-col items-center gap-1 hover:text-purple-400 transition">
+            <i class="fa-solid fa-store text-lg text-purple-400"></i> Skins
+        </button>
+        <button onclick="openModal('quests-modal')" class="flex flex-col items-center gap-1 hover:text-amber-400 transition relative">
+            <i class="fa-solid fa-scroll text-lg text-amber-400"></i> Quests
+        </button>
+        <button onclick="openModal('achievements-modal')" class="flex flex-col items-center gap-1 hover:text-emerald-400 transition">
+            <i class="fa-solid fa-trophy text-lg text-emerald-400"></i> Badges
+        </button>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- SHOP MODAL (Skins & Trails) -->
+    <div id="shop-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                <h2 class="text-lg font-black text-purple-400 flex items-center gap-2">
+                    <i class="fa-solid fa-store"></i> Bird & Trail Shop
+                </h2>
+                <button onclick="closeModal('shop-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="flex gap-2 mb-4 bg-slate-950 p-1 rounded-xl">
+                <button onclick="switchShopTab('skins')" id="shop-tab-skins" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white transition">Skins</button>
+                <button onclick="switchShopTab('trails')" id="shop-tab-trails" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 transition">Trails</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="shop-items-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- UPGRADES MODAL (Passive Skills) -->
+    <div id="upgrades-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                <h2 class="text-lg font-black text-sky-400 flex items-center gap-2">
+                    <i class="fa-solid fa-angles-up"></i> Passive Upgrades
+                </h2>
+                <button onclick="closeModal('upgrades-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="upgrades-items-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- QUESTS MODAL -->
+    <div id="quests-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                <h2 class="text-lg font-black text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-scroll"></i> Daily Quests
+                </h2>
+                <button onclick="closeModal('quests-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-xs text-slate-400 mb-3">Complete daily tasks to earn valuable Gems and Coins! Resets every 24 hours.</div>
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="quests-items-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ACHIEVEMENTS MODAL -->
+    <div id="achievements-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                <h2 class="text-lg font-black text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-trophy"></i> Milestone Badges
+                </h2>
+                <button onclick="closeModal('achievements-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="achievements-items-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast-container" class="fixed top-16 inset-x-0 flex flex-col items-center pointer-events-none z-50 space-y-2 px-4"></div>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        // --- GAME STATE & SAVE SYSTEM ---
+        let gameData = {
+            coins: 150,
+            gems: 10,
+            highScoreClassic: 0,
+            highScoreRush: 0,
+            totalFlaps: 0,
+            totalPipesCleared: 0,
+            selectedSkin: 'classic',
+            selectedTrail: 'none',
+            unlockedSkins: ['classic'],
+            unlockedTrails: ['none'],
+            upgrades: {
+                magnet: 0,
+                shield: 0,
+                coinBoost: 0,
+                revive: 0
+            },
+            quests: [
+                { id: 1, title: "Flap 50 times", target: 50, progress: 0, rewardType: "coins", rewardAmount: 100, completed: false },
+                { id: 2, title: "Clear 10 Pipes", target: 10, progress: 0, rewardType: "coins", rewardAmount: 150, completed: false },
+                { id: 3, title: "Collect 5 Coins in-game", target: 5, progress: 0, rewardType: "gems", rewardAmount: 5, completed: false }
+            ],
+            achievements: [
+                { id: 'score_10', title: "Bronze Aviator", desc: "Reach score of 10 in any mode", target: 10, type: "score", claimed: false },
+                { id: 'score_25', title: "Silver Bird", desc: "Reach score of 25", target: 25, type: "score", claimed: false },
+                { id: 'score_50', title: "Gold Master", desc: "Reach score of 50", target: 50, type: "score", claimed: false },
+                { id: 'flaps_500', title: "Tireless Wings", desc: "Perform 500 total flaps", target: 500, type: "flaps", claimed: false }
+            ]
+        };
+
+        function saveGame() {
+            localStorage.setItem('flappy_ultimate_save', JSON.stringify(gameData));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('flappy_ultimate_save');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    gameData = { ...gameData, ...parsed };
+                } catch(e) { console.error("Save load error", e); }
+            }
+        }
+        loadGame();
+
+        // --- SKINS & ITEMS DEFINITION ---
+        const skins = {
+            classic: { name: "Classic Yellow", cost: 0, type: "skin", color: "#FACC15", bellyColor: "#FEF08A", wingColor: "#EAB308", eye: "#000" },
+            bluejay: { name: "Blue Jay", cost: 250, type: "skin", color: "#3B82F6", bellyColor: "#93C5FD", wingColor: "#1D4ED8", eye: "#FFF" },
+            phoenix: { name: "Fire Phoenix", cost: 600, type: "skin", color: "#EF4444", bellyColor: "#FDBA74", wingColor: "#B91C1C", eye: "#FEF08A" },
+            emerald: { name: "Emerald Bird", cost: 1000, type: "skin", color: "#10B981", bellyColor: "#A7F3D0", wingColor: "#047857", eye: "#FFF" },
+            cyber: { name: "Cyber Neon", cost: 20, type: "gem", color: "#A855F7", bellyColor: "#F43F5E", wingColor: "#38BDF8", eye: "#FFF" }
+        };
+
+        const trails = {
+            none: { name: "No Trail", cost: 0 },
+            sparkle: { name: "Gold Sparkle", cost: 300, color: "#F59E0B" },
+            rainbow: { name: "Rainbow Trail", cost: 15, type: "gem" },
+            fire: { name: "Fire Trail", cost: 500, color: "#EF4444" }
+        };
+
+        const upgradesDef = {
+            magnet: { name: "Coin Magnet", desc: "Attract coins from a wider radius", baseCost: 100, costMult: 1.8, max: 5 },
+            shield: { name: "Armor Shield", desc: "Start each run with an active shield", baseCost: 200, costMult: 2.0, max: 3 },
+            coinBoost: { name: "Coin Multiplier", desc: "Earn extra bonus coins per pickup", baseCost: 150, costMult: 1.7, max: 5 },
+            revive: { name: "Phoenix Revival", desc: "Chance to auto-revive upon crashing", baseCost: 300, costMult: 2.5, max: 3 }
+        };
+
+        // --- CANVAS & GAME ENGINE SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameMode = 'classic'; // 'classic' or 'rush'
+        let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
+
+        // Physics & Game Variables
+        let bird = {
+            x: 80,
+            y: 200,
+            radius: 16,
+            velocity: 0,
+            gravity: 0.38,
+            lift: -7.2,
+            rotation: 0
+        };
+
+        let pipes = [];
+        let coinsList = [];
+        let particles = [];
+        let score = 0;
+        let frameCount = 0;
+        let pipeSpawnInterval = 110;
+        let currentScrollSpeed = 2.8;
+        let shieldActive = false;
+        let trailHistory = [];
+
+        function setGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-classic').className = mode === 'classic' 
+                ? 'py-2.5 px-3 rounded-xl border border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow'
+                : 'py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-400 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow';
+            
+            document.getElementById('mode-rush').className = mode === 'rush' 
+                ? 'py-2.5 px-3 rounded-xl border border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow'
+                : 'py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-400 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow';
+        }
+
+        function updateUI() {
+            document.getElementById('ui-coins').innerText = gameData.coins;
+            document.getElementById('ui-gems').innerText = gameData.gems;
+            document.getElementById('menu-high-score').innerText = gameMode === 'classic' ? gameData.highScoreClassic : gameData.highScoreRush;
+            document.getElementById('menu-total-coins').innerText = gameData.coins;
+            
+            // Bird preview name
+            const skinObj = skins[gameData.selectedSkin] || skins.classic;
+            document.getElementById('menu-bird-name').innerText = skinObj.name;
+        }
+
+        // --- GAME CONTROLS & INPUT ---
+        function handleInput(e) {
+            if (e) e.preventDefault();
+            if (gameState === 'MENU') {
+                startGame();
+            } else if (gameState === 'PLAYING') {
+                bird.velocity = bird.lift;
+                bird.rotation = -25;
+                gameData.totalFlaps++;
+                checkQuestProgress('flaps', 1);
+                createFlapParticles();
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                handleInput(e);
+            }
+        });
+        canvas.addEventListener('click', handleInput);
+        canvas.addEventListener('touchstart', handleInput, { passive: false });
+
+        // --- START & RESET GAME ---
+        function startGame() {
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('in-game-hud').classList.remove('hidden');
+            document.getElementById('header-bar').classList.add('hidden');
+            document.getElementById('bottom-bar').classList.add('hidden');
+
+            gameState = 'PLAYING';
+            score = 0;
+            document.getElementById('hud-score').innerText = score;
+
+            bird.x = canvas.width * 0.25;
+            bird.y = canvas.height * 0.4;
+            bird.velocity = 0;
+            bird.rotation = 0;
+
+            pipes = [];
+            coinsList = [];
+            particles = [];
+            trailHistory = [];
+
+            // Apply upgrades
+            const shieldLevel = gameData.upgrades.shield || 0;
+            shieldActive = shieldLevel > 0;
+            const hudShield = document.getElementById('hud-powerup');
+            if (shieldActive) {
+                hudShield.innerText = `Shield Active (${shieldLevel})`;
+                hudShield.classList.remove('hidden');
+            } else {
+                hudShield.classList.add('hidden');
+            }
+
+            currentScrollSpeed = gameMode === 'rush' ? 4.2 : 2.8;
+            pipeSpawnInterval = gameMode === 'rush' ? 85 : 110;
+            frameCount = 0;
+        }
+
+        function gameOver() {
+            // Check revive upgrade
+            const reviveLevel = gameData.upgrades.revive || 0;
+            if (reviveLevel > 0 && Math.random() < (reviveLevel * 0.15)) {
+                // Trigger revive
+                bird.y = canvas.height * 0.4;
+                bird.velocity = bird.lift;
+                shieldActive = true;
+                const hudShield = document.getElementById('hud-powerup');
+                hudShield.innerText = "Phoenix Revive!";
+                hudShield.classList.remove('hidden');
+                showToast("🔥 Phoenix Revive Triggered!", "amber");
+                return;
+            }
+
+            gameState = 'GAMEOVER';
+            document.getElementById('in-game-hud').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.remove('hidden');
+            document.getElementById('header-bar').classList.remove('hidden');
+            document.getElementById('bottom-bar').classList.remove('hidden');
+
+            // Calculate earnings
+            const coinBoostMultiplier = 1 + (gameData.upgrades.coinBoost * 0.2);
+            const earnedCoins = Math.floor(score * 3 * coinBoostMultiplier) + 5;
+            const earnedGems = Math.floor(score / 10);
+
+            gameData.coins += earnedCoins;
+            gameData.gems += earnedGems;
+
+            // Update high scores
+            if (gameMode === 'classic' && score > gameData.highScoreClassic) {
+                gameData.highScoreClassic = score;
+            } else if (gameMode === 'rush' && score > gameData.highScoreRush) {
+                gameData.highScoreRush = score;
+            }
+
+            document.getElementById('go-score').innerText = score;
+            document.getElementById('go-best').innerText = gameMode === 'classic' ? gameData.highScoreClassic : gameData.highScoreRush;
+            document.getElementById('go-earned-coins').innerText = earnedCoins;
+            document.getElementById('go-earned-gems').innerText = earnedGems;
+
+            checkAchievements();
+            saveGame();
+            updateUI();
+        }
+
+        function returnToMenu() {
+            gameState = 'MENU';
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+            updateUI();
+        }
+
+        // --- PARTICLES & EFFECTS ---
+        function createFlapParticles() {
+            for (let i = 0; i < 5; i++) {
+                particles.push({
+                    x: bird.x - 10,
+                    y: bird.y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    radius: Math.random() * 3 + 1,
+                    color: '#FFF',
+                    alpha: 1,
+                    decay: 0.04
+                });
+            }
+        }
+
+        function createCoinSparkles(x, y) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    radius: Math.random() * 4 + 2,
+                    color: '#F59E0B',
+                    alpha: 1,
+                    decay: 0.05
+                });
+            }
+        }
+
+        // --- GAME LOOP & PHYSICS ---
+        function updateGame() {
+            if (gameState !== 'PLAYING') return;
+
+            frameCount++;
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+            bird.rotation = Math.min(Math.PI / 2, Math.max(-Math.PI / 4, (bird.velocity / 12) * (Math.PI / 2)));
+
+            // Trail history
+            if (gameData.selectedTrail !== 'none') {
+                trailHistory.push({ x: bird.x, y: bird.y });
+                if (trailHistory.length > 12) trailHistory.shift();
+            }
+
+            // Floor & Ceiling Collision
+            if (bird.y + bird.radius >= canvas.height - 70) {
+                if (shieldActive) {
+                    shieldActive = false;
+                    document.getElementById('hud-powerup').classList.add('hidden');
+                    bird.velocity = bird.lift * 1.2;
+                } else {
+                    gameOver();
+                }
+            }
+            if (bird.y - bird.radius <= 0) {
+                bird.y = bird.radius;
+                bird.velocity = 0;
+            }
+
+            // Pipe Spawning
+            if (frameCount % pipeSpawnInterval === 0) {
+                const minH = 60;
+                const maxH = canvas.height - 220;
+                const topH = Math.floor(Math.random() * (maxH - minH + 1)) + minH;
+                const gap = gameMode === 'rush' ? 130 : 150;
+                
+                pipes.push({
+                    x: canvas.width,
+                    topHeight: topH,
+                    bottomY: topH + gap,
+                    width: 65,
+                    passed: false
+                });
+
+                // Spawn Coin in Gap
+                if (Math.random() < 0.7) {
+                    coinsList.push({
+                        x: canvas.width + 30,
+                        y: topH + (gap / 2),
+                        radius: 10,
+                        collected: false
+                    });
+                }
+            }
+
+            // Move Pipes
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= currentScrollSpeed;
+
+                // Check collision
+                if (
+                    bird.x + bird.radius > pipes[i].x &&
+                    bird.x - bird.radius < pipes[i].x + pipes[i].width &&
+                    (bird.y - bird.radius < pipes[i].topHeight || bird.y + bird.radius > pipes[i].bottomY)
+                ) {
+                    if (shieldActive) {
+                        shieldActive = false;
+                        document.getElementById('hud-powerup').classList.add('hidden');
+                        pipes.splice(i, 1);
+                        showToast("🛡️ Shield Absorbed Crash!", "blue");
+                    } else {
+                        gameOver();
+                    }
+                }
+
+                // Score check
+                if (!pipes[i].passed && pipes[i].x + pipes[i].width < bird.x) {
+                    pipes[i].passed = true;
+                    score++;
+                    document.getElementById('hud-score').innerText = score;
+                    gameData.totalPipesCleared++;
+                    checkQuestProgress('pipes', 1);
+                }
+
+                // Remove offscreen pipes
+                if (pipes[i].x + pipes[i].width < -50) {
+                    pipes.splice(i, 1);
+                }
+            }
+
+            // Move & Magnetize Coins
+            const magnetLevel = gameData.upgrades.magnet || 0;
+            const magnetRadius = magnetLevel * 45 + 20;
+
+            for (let i = coinsList.length - 1; i >= 0; i--) {
+                coinsList[i].x -= currentScrollSpeed;
+
+                // Magnet pull
+                if (magnetLevel > 0) {
+                    const dx = bird.x - coinsList[i].x;
+                    const dy = bird.y - coinsList[i].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < magnetRadius) {
+                        coinsList[i].x += dx * 0.12;
+                        coinsList[i].y += dy * 0.12;
+                    }
+                }
+
+                // Collision with bird
+                const cdx = bird.x - coinsList[i].x;
+                const cdy = bird.y - coinsList[i].y;
+                const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+
+                if (!coinsList[i].collected && cdist < bird.radius + coinsList[i].radius) {
+                    coinsList[i].collected = true;
+                    gameData.coins += 2;
+                    createCoinSparkles(coinsList[i].x, coinsList[i].y);
+                    checkQuestProgress('coin_pickup', 1);
+                    coinsList.splice(i, 1);
+                } else if (coinsList[i].x < -30) {
+                    coinsList.splice(i, 1);
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                particles[i].alpha -= particles[i].decay;
+                if (particles[i].alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        // --- RENDERING ENGINE ---
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background Gradient & Parallax Clouds
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGrad.addColorStop(0, '#0284C7');
+            bgGrad.addColorStop(0.7, '#38BDF8');
+            bgGrad.addColorStop(1, '#BAE6FD');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Parallax Mountains / City Silhouette
+            ctx.fillStyle = '#0369A1';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 70);
+            for (let x = 0; x < canvas.width; x += 60) {
+                ctx.lineTo(x, canvas.height - 120 - Math.sin((x + frameCount) * 0.02) * 30);
+            }
+            ctx.lineTo(canvas.width, canvas.height - 70);
+            ctx.fill();
+
+            // Draw Pipes
+            pipes.forEach(pipe => {
+                let isHit = false;
+                // Check if bird collided with this specific pipe
+                if (
+                    bird.x + bird.radius > pipe.x &&
+                    bird.x - bird.radius < pipe.x + pipe.width &&
+                    (bird.y - bird.radius < pipe.topHeight || bird.y + bird.radius > pipe.bottomY)
+                ) {
+                    isHit = true;
+                }
+
+                // Top Pipe Gradient / Color
+                const pipeGrad = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipe.width, 0);
+                if (isHit && !shieldActive) {
+                    pipeGrad.addColorStop(0, '#B91C1C');
+                    pipeGrad.addColorStop(0.5, '#EF4444');
+                    pipeGrad.addColorStop(1, '#991B1B');
+                } else {
+                    pipeGrad.addColorStop(0, '#15803D');
+                    pipeGrad.addColorStop(0.5, '#22C55E');
+                    pipeGrad.addColorStop(1, '#166534');
+                }
+                
+                ctx.fillStyle = pipeGrad;
+                ctx.fillRect(pipe.x, 0, pipe.width, pipe.topHeight);
+                // Pipe Lip Top
+                ctx.fillRect(pipe.x - 4, pipe.topHeight - 24, pipe.width + 8, 24);
+
+                // Bottom Pipe
+                ctx.fillRect(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY);
+                // Pipe Lip Bottom
+                ctx.fillRect(pipe.x - 4, pipe.bottomY, pipe.width + 8, 24);
+
+                // Pipe borders
+                ctx.strokeStyle = (isHit && !shieldActive) ? '#7F1D1D' : '#14532D';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(pipe.x, 0, pipe.width, pipe.topHeight);
+                ctx.strokeRect(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY);
+            });
+
+            // Draw Coins
+            coinsList.forEach(coin => {
+                if (coin.collected) return;
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                const scaleX = Math.abs(Math.sin(frameCount * 0.1));
+                ctx.scale(scaleX, 1);
+                ctx.fillStyle = '#F59E0B';
+                ctx.beginPath();
+                ctx.arc(0, 0, 11, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#B45309';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#FEF3C7';
+                ctx.font = 'bold 10px Poppins';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('¢', 0, 0);
+                ctx.restore();
+            });
+
+            // Draw Trails
+            if (gameData.selectedTrail !== 'none' && trailHistory.length > 0) {
+                const trailColor = trails[gameData.selectedTrail].color || '#F59E0B';
+                for (let i = 0; i < trailHistory.length; i++) {
+                    const pt = trailHistory[i];
+                    const alpha = i / trailHistory.length;
+                    ctx.fillStyle = trailColor;
+                    ctx.globalAlpha = alpha * 0.5;
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, bird.radius * (i / trailHistory.length) * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Draw Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Draw Bird
+            drawBird(ctx, bird.x, bird.y, bird.rotation, gameData.selectedSkin);
+
+            // Draw Ground Floor
+            const groundY = canvas.height - 70;
+            ctx.fillStyle = '#65A30D';
+            ctx.fillRect(0, groundY, canvas.width, 70);
+            ctx.fillStyle = '#166534';
+            ctx.fillRect(0, groundY, canvas.width, 16);
+            
+            // Ground stripes moving effect
+            ctx.fillStyle = '#4D7C0F';
+            const offset = (frameCount * currentScrollSpeed) % 30;
+            for (let x = -offset; x < canvas.width; x += 30) {
+                ctx.beginPath();
+                ctx.moveTo(x, groundY + 16);
+                ctx.lineTo(x + 15, canvas.height);
+                ctx.lineTo(x + 25, canvas.height);
+                ctx.lineTo(x + 10, groundY + 16);
+                ctx.fill();
+            }
+        }
+
+        function drawBird(context, x, y, rotation, skinKey) {
+            const skin = skins[skinKey] || skins.classic;
+            context.save();
+            context.translate(x, y);
+            context.rotate(rotation);
+
+            // Shield Aura if active
+            if (shieldActive) {
+                context.strokeStyle = '#38BDF8';
+                context.lineWidth = 3;
+                context.fillStyle = 'rgba(56, 189, 248, 0.2)';
+                context.beginPath();
+                context.arc(0, 0, bird.radius + 8, 0, Math.PI * 2);
+                context.fill();
+                context.stroke();
+            }
+
+            // Body
+            context.fillStyle = skin.color;
+            context.beginPath();
+            context.ellipse(0, 0, bird.radius + 2, bird.radius - 2, 0, 0, Math.PI * 2);
+            context.fill();
+            context.strokeStyle = '#000';
+            context.lineWidth = 2;
+            context.stroke();
+
+            // Belly
+            context.fillStyle = skin.bellyColor;
+            context.beginPath();
+            context.ellipse(4, 3, bird.radius * 0.6, bird.radius * 0.5, 0, 0, Math.PI * 2);
+            context.fill();
+
+            // Wing
+            context.fillStyle = skin.wingColor;
+            context.beginPath();
+            const wingOffset = Math.sin(frameCount * 0.4) * 4;
+            context.ellipse(-4, wingOffset, 8, 5, -0.3, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            // Eye
+            context.fillStyle = skin.eye;
+            context.beginPath();
+            context.arc(8, -5, 5, 0, Math.PI * 2);
+            context.fill();
+            context.fillStyle = '#000';
+            context.beginPath();
+            context.arc(9, -5, 2, 0, Math.PI * 2);
+            context.fill();
+
+            // Beak
+            context.fillStyle = '#F97316';
+            context.beginPath();
+            context.moveTo(12, -2);
+            context.lineTo(20, 2);
+            context.lineTo(12, 6);
+            context.closePath();
+            context.fill();
+            context.stroke();
+
+            context.restore();
+        }
+
+        // Draw Mini Bird for Preview
+        function drawPreviewBird() {
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            drawBird(previewCtx, previewCanvas.width / 2, previewCanvas.height / 2, Math.sin(Date.now() * 0.005) * 0.2, gameData.selectedSkin);
+            requestAnimationFrame(drawPreviewBird);
+        }
+        drawPreviewBird();
+
+        // Main Loop
+        function mainLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(mainLoop);
+        }
+        requestAnimationFrame(mainLoop);
+
+        // --- MODAL MANAGEMENT & UI POPULATORS ---
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+            if (modalId === 'shop-modal') renderShop();
+            if (modalId === 'upgrades-modal') renderUpgrades();
+            if (modalId === 'quests-modal') renderQuests();
+            if (modalId === 'achievements-modal') renderAchievements();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            updateUI();
+        }
+
+        let currentShopTab = 'skins';
+        function switchShopTab(tab) {
+            currentShopTab = tab;
+            document.getElementById('shop-tab-skins').className = tab === 'skins' ? 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white transition' : 'flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 transition';
+            document.getElementById('shop-tab-trails').className = tab === 'trails' ? 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white transition' : 'flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 transition';
+            renderShop();
+        }
+
+        function renderShop() {
+            const container = document.getElementById('shop-items-container');
+            container.innerHTML = '';
+
+            const items = currentShopTab === 'skins' ? skins : trails;
+            const unlockedList = currentShopTab === 'skins' ? gameData.unlockedSkins : gameData.unlockedTrails;
+            const selectedKey = currentShopTab === 'skins' ? gameData.selectedSkin : gameData.selectedTrail;
+
+            for (let key in items) {
+                const item = items[key];
+                const isUnlocked = unlockedList.includes(key);
+                const isSelected = selectedKey === key;
+
+                const card = document.createElement('div');
+                card.className = `flex items-center justify-between p-3 rounded-2xl border ${isSelected ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-950/60'}`;
+                
+                let btnHTML = '';
+                if (isSelected) {
+                    btnHTML = `<span class="text-xs font-bold text-purple-400 bg-purple-500/20 px-3 py-1 rounded-full">Equipped</span>`;
+                } else if (isUnlocked) {
+                    btnHTML = `<button onclick="equipItem('${currentShopTab}', '${key}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition">Equip</button>`;
+                } else {
+                    const currencyIcon = item.type === 'gem' ? '<i class="fa-solid fa-gem text-blue-400"></i>' : '<i class="fa-solid fa-coins text-amber-400"></i>';
+                    btnHTML = `<button onclick="buyItem('${currentShopTab}', '${key}')" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-1">${currencyIcon} ${item.cost}</button>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-lg" style="color: ${item.color || '#FACC15'}">
+                            <i class="fa-solid ${currentShopTab === 'skins' ? 'fa-feather' : 'fa-wand-magic-sparkles'}"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-white">${item.name}</div>
+                            <div class="text-[10px] text-slate-400">${isUnlocked ? 'Unlocked' : 'Locked'}</div>
+                        </div>
+                    </div>
+                    <div>${btnHTML}</div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function buyItem(type, key) {
+            const item = (type === 'skins' ? skins : trails)[key];
+            const currency = item.type === 'gem' ? 'gems' : 'coins';
+
+            if (gameData[currency] >= item.cost) {
+                gameData[currency] -= item.cost;
+                if (type === 'skins') {
+                    gameData.unlockedSkins.push(key);
+                    gameData.selectedSkin = key;
+                } else {
+                    gameData.unlockedTrails.push(key);
+                    gameData.selectedTrail = key;
+                }
+                saveGame();
+                renderShop();
+                updateUI();
+                showToast(`Successfully purchased ${item.name}!`, 'emerald');
+            } else {
+                showToast(`Not enough ${currency}!`, 'red');
+            }
+        }
+
+        function equipItem(type, key) {
+            if (type === 'skins') gameData.selectedSkin = key;
+            else gameData.selectedTrail = key;
+            saveGame();
+            renderShop();
+            updateUI();
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrades-items-container');
+            container.innerHTML = '';
+
+            for (let key in upgradesDef) {
+                const up = upgradesDef[key];
+                const currentLevel = gameData.upgrades[key] || 0;
+                const cost = Math.floor(up.baseCost * Math.pow(up.costMult, currentLevel));
+                const isMax = currentLevel >= up.max;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border border-slate-800 bg-slate-950/60 flex flex-col gap-2`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm font-bold text-white">${up.name} <span class="text-xs text-sky-400 font-normal">Lv. ${currentLevel}/${up.max}</span></div>
+                        <div class="text-xs text-slate-400">Cost: ${isMax ? 'MAX' : cost + ' Coins'}</div>
+                    </div>
+                    <div class="text-xs text-slate-400">${up.desc}</div>
+                    <div class="flex justify-end">
+                        <button onclick="upgradeSkill('${key}')" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1" ${isMax ? 'disabled' : ''}>
+                            <i class="fa-solid fa-arrow-up"></i> ${isMax ? 'Maxed Out' : 'Upgrade'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function upgradeSkill(key) {
+            const up = upgradesDef[key];
+            const currentLevel = gameData.upgrades[key] || 0;
+            const cost = Math.floor(up.baseCost * Math.pow(up.costMult, currentLevel));
+
+            if (gameData.coins >= cost && currentLevel < up.max) {
+                gameData.coins -= cost;
+                gameData.upgrades[key]++;
+                saveGame();
+                renderUpgrades();
+                updateUI();
+                showToast(`Upgraded ${up.name} to Level ${gameData.upgrades[key]}!`, 'sky');
+            } else {
+                showToast("Not enough coins!", "red");
+            }
+        }
+
+        function renderQuests() {
+            const container = document.getElementById('quests-items-container');
+            container.innerHTML = '';
+
+            let hasClaimable = false;
+            gameData.quests.forEach(q => {
+                if (q.progress >= q.target && !q.completed) hasClaimable = true;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border ${q.completed ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-slate-800 bg-slate-950/60'} flex flex-col gap-2`;
+                
+                const percent = Math.min(100, Math.floor((q.progress / q.target) * 100));
+                
+                let btnHTML = '';
+                if (q.completed) {
+                    btnHTML = `<span class="text-xs font-bold text-emerald-400">Completed <i class="fa-solid fa-check"></i></span>`;
+                } else if (q.progress >= q.target) {
+                    btnHTML = `<button onclick="claimQuest(${q.id})" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition animate-pulse">Claim Reward</button>`;
+                } else {
+                    btnHTML = `<span class="text-xs text-slate-400 font-semibold">${q.progress}/${q.target}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm font-bold text-white">${q.title}</div>
+                        <div>${btnHTML}</div>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-amber-400 h-full transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="text-[10px] text-amber-300 font-bold flex items-center gap-1">
+                        Reward: +${q.rewardAmount} ${q.rewardType.toUpperCase()}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            const badge = document.getElementById('quest-badge');
+            if (hasClaimable) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+        }
+
+        function checkQuestProgress(type, amount) {
+            gameData.quests.forEach(q => {
+                if (!q.completed) {
+                    if (type === 'flaps' && q.title.includes('Flap')) q.progress += amount;
+                    if (type === 'pipes' && q.title.includes('Pipes')) q.progress += amount;
+                    if (type === 'coin_pickup' && q.title.includes('Coins')) q.progress += amount;
+                    if (q.progress > q.target) q.progress = q.target;
+                }
+            });
+            saveGame();
+        }
+
+        function claimQuest(id) {
+            const q = gameData.quests.find(item => item.id === id);
+            if (q && q.progress >= q.target && !q.completed) {
+                q.completed = true;
+                if (q.rewardType === 'coins') gameData.coins += q.rewardAmount;
+                if (q.rewardType === 'gems') gameData.gems += q.rewardAmount;
+                saveGame();
+                renderQuests();
+                updateUI();
+                showToast(`Claimed +${q.rewardAmount} ${q.rewardType.toUpperCase()}!`, 'amber');
+            }
+        }
+
+        function renderAchievements() {
+            const container = document.getElementById('achievements-items-container');
+            container.innerHTML = '';
+
+            gameData.achievements.forEach(ach => {
+                let unlocked = false;
+                if (ach.type === 'score' && (gameData.highScoreClassic >= ach.target || gameData.highScoreRush >= ach.target)) unlocked = true;
+                if (ach.type === 'flaps' && gameData.totalFlaps >= ach.target) unlocked = true;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border ${unlocked ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 bg-slate-950/60'} flex items-center justify-between`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl ${unlocked ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-500'} flex items-center justify-center text-lg font-black shadow">
+                            <i class="fa-solid fa-medal"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-white">${ach.title}</div>
+                            <div class="text-[10px] text-slate-400">${ach.desc}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold ${unlocked ? 'text-emerald-400' : 'text-slate-500'}">${unlocked ? 'Unlocked' : 'Locked'}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function checkAchievements() {
+            // Evaluated automatically inside render/gameover
+        }
+
+        function showToast(message, color = 'sky') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colorClasses = {
+                sky: 'bg-sky-500 text-slate-950 border-sky-400',
+                emerald: 'bg-emerald-500 text-slate-950 border-emerald-400',
+                amber: 'bg-amber-500 text-slate-950 border-amber-400',
+                red: 'bg-red-500 text-white border-red-400',
+                blue: 'bg-blue-600 text-white border-blue-400'
+            };
+
+            toast.className = `px-4 py-2 rounded-xl text-xs font-black shadow-2xl border transform transition-all duration-300 translate-y-[-10px] opacity-0 ${colorClasses[color] || colorClasses.sky}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-10px]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Initialize UI on load
+        updateUI();
+    </script>
+</body>
+</html>
